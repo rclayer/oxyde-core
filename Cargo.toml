@@ -9,12 +9,12 @@ members = [
 ]
 
 [workspace.package]
-version = "0.7.1"
+version = "0.7.2"
 edition = "2021"
 rust-version = "1.88"
 license = "MIT"
-repository = "https://github.com/mr-fatalyst/oxyde"
-homepage = "https://github.com/mr-fatalyst/oxyde"
+repository = "https://github.com/rclayer/oxyde-core"
+homepage = "https://github.com/rclayer/oxyde-core"
 description = "High-performance async ORM with Rust core"
 
 [workspace.dependencies]

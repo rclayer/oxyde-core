@@ -35,7 +35,7 @@ pub(crate) fn extract_pool_settings(
         return Ok(parsed);
     }
 
-    if let Ok(dict) = obj.downcast::<PyDict>() {
+    if let Ok(dict) = obj.cast::<PyDict>() {
         parse_pool_dict(dict, &mut parsed)?;
         return Ok(parsed);
     }
@@ -45,7 +45,7 @@ pub(crate) fn extract_pool_settings(
         if payload.is_none() {
             return Ok(parsed);
         }
-        let dict = payload.downcast::<PyDict>()?;
+        let dict = payload.cast::<PyDict>()?;
         parse_pool_dict(dict, &mut parsed)?;
         return Ok(parsed);
     }

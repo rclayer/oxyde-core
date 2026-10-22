@@ -4,7 +4,7 @@ build-backend = "maturin"
 
 [project]
 name = "oxyde-core"
-version = "0.7.1"
+version = "0.7.2"
 description = "Rust core for Oxyde ORM - high-performance database operations"
 readme = "README.md"
 license = {text = "MIT"}
@@ -25,14 +25,15 @@ classifiers = [
     "Programming Language :: Python :: 3.12",
     "Programming Language :: Python :: 3.13",
     "Programming Language :: Python :: 3.14",
+    "Programming Language :: Python :: 3.15",
     "Topic :: Database",
 ]
 
 [project.urls]
-Homepage = "https://github.com/mr-fatalyst/oxyde"
-Documentation = "https://github.com/mr-fatalyst/oxyde#readme"
-Repository = "https://github.com/mr-fatalyst/oxyde"
-Issues = "https://github.com/mr-fatalyst/oxyde/issues"
+Homepage = "https://github.com/rclayer/oxyde-core"
+Documentation = "https://github.com/rclayer/oxyde-core#readme"
+Repository = "https://github.com/rclayer/oxyde-core"
+Issues = "https://github.com/rclayer/oxyde-core/issues"
 
 [tool.maturin]
 module-name = "_oxyde_core"
