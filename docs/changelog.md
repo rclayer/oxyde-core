@@ -4,6 +4,13 @@ All notable changes to Oxyde are documented here.
 
 ---
 
+## Rust core 0.7.3 - 2026-10-23
+
+- Fixed PostgreSQL `SMALLINT` and `SMALLINT[]` decoding to return Python integers
+  instead of `None`, including negative values and the 16-bit boundaries. The fix
+  covers model fields and raw scalar queries and preserves null values.
+- CPython 3.15 wheels are published under `rclayer-cp315-v0.7.3`.
+
 ## 0.8.0 - 2026-08-26
 
 **Rust core: 0.7.0+** (`core-v0.7.0+`)
