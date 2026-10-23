@@ -68,7 +68,7 @@ jobs:
 
       - uses: softprops/action-gh-release@v3.0.0
         with:
-          name: oxyde-core 0.7.2 (CPython 3.15)
+          name: ${{ github.ref_name }} (CPython 3.15)
           generate_release_notes: true
           fail_on_unmatched_files: true
           files: dist/*.whl

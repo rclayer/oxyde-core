@@ -54,6 +54,12 @@ class PgDbTypes(Model):
     int_arr: list[int] | None = Field(
         default=None, db_nullable=True, db_type="INTEGER[]"
     )
+    smallint_val: int | None = Field(
+        default=None, db_nullable=True, db_type="SMALLINT"
+    )
+    smallint_arr: list[int] | None = Field(
+        default=None, db_nullable=True, db_type="SMALLINT[]"
+    )
 
     class Meta:
         is_table = True
@@ -226,3 +232,36 @@ class TestDbTypes:
         obj = await model.objects.create(int_arr=val, using=db.name)
         fetched = await model.objects.get(id=obj.id, using=db.name)
         assert fetched.int_arr == val
+
+    @pytest.mark.asyncio
+    @pytest.mark.parametrize("val", [-32768, -1, 0, 3, 32767, None])
+    async def test_smallint(self, typed_db, val):
+        db, model = typed_db
+        if not _has(model, "smallint_val"):
+            pytest.skip("No SMALLINT field on this dialect model")
+        obj = await model.objects.create(smallint_val=val, using=db.name)
+        fetched = await model.objects.get(id=obj.id, using=db.name)
+        assert fetched.smallint_val == val
+        if val is not None:
+            assert isinstance(fetched.smallint_val, int)
+
+    @pytest.mark.asyncio
+    @pytest.mark.parametrize("val", [[-32768, -1, 0, 3, 32767], [], None])
+    async def test_smallint_array(self, typed_db, val):
+        db, model = typed_db
+        if not _has(model, "smallint_arr"):
+            pytest.skip("No SMALLINT array on this dialect model")
+        obj = await model.objects.create(smallint_arr=val, using=db.name)
+        fetched = await model.objects.get(id=obj.id, using=db.name)
+        assert fetched.smallint_arr == val
+        if val is not None:
+            assert all(isinstance(item, int) for item in fetched.smallint_arr)
+
+    @pytest.mark.asyncio
+    async def test_raw_smallint(self, typed_db):
+        db, model = typed_db
+        if not _has(model, "smallint_val"):
+            pytest.skip("PostgreSQL-specific SMALLINT cast")
+        rows = await execute_raw("SELECT 3::smallint AS v", using=db.name)
+        assert rows == [{"v": 3}]
+        assert isinstance(rows[0]["v"], int)
