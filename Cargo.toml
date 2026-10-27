@@ -43,3 +43,6 @@ match_same_arms = "allow"
 too_many_lines = "allow"
 implicit_hasher = "allow"
 struct_excessive_bools = "allow"
+
+[patch.crates-io]
+sqlx-postgres = { path = "vendor/sqlx-postgres" }

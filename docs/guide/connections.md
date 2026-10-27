@@ -196,6 +196,13 @@ settings = PoolSettings(
 )
 ```
 
+Set `pg_statement_cache_capacity=0` to execute ordinary parameterized queries
+with unnamed statements. Parse, Bind, Describe portal, Execute, and Close are
+sent in a single batch ending in one Sync. Queries use the current result shape
+after schema changes without accumulating named statements in PostgreSQL or
+PgBouncer. The single batch also supports PgBouncer transaction pooling.
+Explicitly prepared statement objects retain their existing preparation path.
+
 ### MySQL Settings
 
 ```python

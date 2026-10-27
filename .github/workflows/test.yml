@@ -27,6 +27,7 @@ jobs:
           filters: |
             rust:
               - 'crates/**'
+              - 'vendor/**'
               - 'Cargo.toml'
               - 'Cargo.lock'
               - '.github/workflows/test.yml'
@@ -67,6 +68,20 @@ jobs:
     needs: [changes, lint]
     if: needs.changes.outputs.rust == 'true'
     runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:18-alpine
+        env:
+          POSTGRES_USER: oxyde
+          POSTGRES_PASSWORD: oxyde
+          POSTGRES_DB: oxyde
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U oxyde"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
     steps:
       - uses: actions/checkout@v6.0.2
 
@@ -78,6 +93,11 @@ jobs:
 
       - name: Run tests
         run: cargo test --workspace
+
+      - name: PostgreSQL unnamed statement regressions
+        env:
+          OXYDE_TEST_POSTGRES_URL: postgresql://oxyde:oxyde@localhost:5432/oxyde
+        run: cargo test -p oxyde-driver --test postgres_unnamed -- --ignored
 
   # Run Python tests
   test-python:

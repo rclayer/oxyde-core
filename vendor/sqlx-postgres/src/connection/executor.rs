@@ -8,6 +8,7 @@ use crate::message::{
     ParseComplete, Query, RowDescription,
 };
 use crate::statement::PgStatementMetadata;
+use crate::types::Oid;
 use crate::{
     statement::PgStatement, PgArguments, PgConnection, PgQueryResult, PgRow, PgTypeInfo,
     PgValueFormat, Postgres,
@@ -39,11 +40,7 @@ async fn prepare(
     // we have not yet started the query sequence, so we are *safe* to cleanly make
     // additional queries here to get any missing OIDs
 
-    let mut param_types = Vec::with_capacity(parameters.len());
-
-    for ty in parameters {
-        param_types.push(conn.resolve_type_id(&ty.0).await?);
-    }
+    let param_types = resolve_parameter_types(conn, parameters).await?;
 
     // flush and wait until we are re-ready
     conn.wait_until_ready().await?;
@@ -99,6 +96,17 @@ async fn prepare(
     };
 
     Ok((id, metadata))
+}
+
+async fn resolve_parameter_types(
+    conn: &mut PgConnection,
+    parameters: &[PgTypeInfo],
+) -> Result<Vec<Oid>, Error> {
+    let mut param_types = Vec::with_capacity(parameters.len());
+    for ty in parameters {
+        param_types.push(conn.resolve_type_id(&ty.0).await?);
+    }
+    Ok(param_types)
 }
 
 async fn recv_desc_params(conn: &mut PgConnection) -> Result<ParameterDescription, Error> {
@@ -223,19 +231,33 @@ impl PgConnection {
                 )
             })?;
 
-            // prepare the statement if this our first time executing it
-            // always return the statement ID here
-            let (statement, metadata_) = self
-                .get_or_prepare(query, &arguments.types, persistent, metadata_opt)
-                .await?;
+            let unnamed = !self.inner.cache_statement.is_enabled() && metadata_opt.is_none();
+            let statement = if unnamed {
+                // Resolve custom types and encoding patches before starting the batch:
+                // either may execute its own queries on this connection.
+                let param_types = resolve_parameter_types(self, &arguments.types).await?;
+                let parameters = arguments.types.clone();
+                arguments.apply_patches(self, &parameters).await?;
+                self.wait_until_ready().await?;
 
-            metadata = metadata_;
-
-            // patch holes created during encoding
-            arguments.apply_patches(self, &metadata.parameters).await?;
-
-            // consume messages till `ReadyForQuery` before bind and execute
-            self.wait_until_ready().await?;
+                // A single Sync keeps Parse and Execute on the same server when
+                // using transaction pooling. No named statement survives this query.
+                self.inner.stream.write_msg(Parse {
+                    param_types: &param_types,
+                    query,
+                    statement: StatementId::UNNAMED,
+                })?;
+                metadata = Arc::new(PgStatementMetadata::default());
+                StatementId::UNNAMED
+            } else {
+                let (statement, metadata_) = self
+                    .get_or_prepare(query, &arguments.types, persistent, metadata_opt)
+                    .await?;
+                metadata = metadata_;
+                arguments.apply_patches(self, &metadata.parameters).await?;
+                self.wait_until_ready().await?;
+                statement
+            };
 
             // bind to attach the arguments to the statement and create a portal
             self.inner.stream.write_msg(Bind {
@@ -246,6 +268,13 @@ impl PgConnection {
                 params: &arguments.buffer,
                 result_formats: &[PgValueFormat::Binary],
             })?;
+
+            if unnamed {
+                // Discover the current result shape without a separate prepare trip.
+                self.inner
+                    .stream
+                    .write_msg(message::Describe::Portal(PortalId::UNNAMED))?;
+            }
 
             // executes the portal up to the passed limit
             // the protocol-level limit acts nearly identically to the `LIMIT` in SQL
