@@ -150,6 +150,20 @@ impl PgConnection {
         Ok(params)
     }
 
+    /// Resolve binary result types only after consuming the original ReadyForQuery.
+    /// Catalog queries must not run while that result is still on the wire.
+    pub(super) async fn resolve_result_columns(
+        &mut self,
+        columns: &mut [PgColumn],
+    ) -> Result<(), Error> {
+        for column in columns {
+            if let PgType::DeclareWithOid(oid) = &column.type_info.0 {
+                column.type_info = self.maybe_fetch_type_info_by_oid(*oid, true).await?;
+            }
+        }
+        Ok(())
+    }
+
     async fn maybe_fetch_type_info_by_oid(
         &mut self,
         oid: Oid,

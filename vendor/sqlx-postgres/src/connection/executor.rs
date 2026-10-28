@@ -8,6 +8,7 @@ use crate::message::{
     ParseComplete, Query, RowDescription,
 };
 use crate::statement::PgStatementMetadata;
+use crate::type_info::PgType;
 use crate::types::Oid;
 use crate::{
     statement::PgStatement, PgArguments, PgConnection, PgQueryResult, PgRow, PgTypeInfo,
@@ -321,6 +322,8 @@ impl PgConnection {
         self.inner.stream.flush().await?;
 
         Ok(try_stream! {
+            let mut defer_metadata = false;
+            let mut deferred = Vec::new();
             loop {
                 let message = self.inner.stream.recv().await?;
 
@@ -345,9 +348,12 @@ impl PgConnection {
 
                         let rows_affected = cc.rows_affected();
                         logger.increase_rows_affected(rows_affected);
-                        r#yield!(Either::Left(PgQueryResult {
-                            rows_affected,
-                        }));
+                        let result = PgQueryResult { rows_affected };
+                        if defer_metadata {
+                            deferred.push(Either::Left(result));
+                        } else {
+                            r#yield!(Either::Left(result));
+                        }
                     }
 
                     BackendMessageFormat::EmptyQueryResponse => {
@@ -370,6 +376,13 @@ impl PgConnection {
                             columns,
                             parameters: Vec::default(),
                         });
+                        // The unnamed binary path cannot query the catalogs until
+                        // this execution has finished. Only cold custom results
+                        // need staging; built-in and warm results keep streaming.
+                        defer_metadata = format == PgValueFormat::Binary
+                            && metadata.columns.iter().any(|column| {
+                                matches!(column.type_info.0, PgType::DeclareWithOid(_))
+                            });
                     }
 
                     BackendMessageFormat::DataRow => {
@@ -377,6 +390,10 @@ impl PgConnection {
 
                         // one of the set of rows returned by a SELECT, FETCH, etc query
                         let data: DataRow = message.decode()?;
+                        if defer_metadata {
+                            deferred.push(Either::Right(data));
+                            continue;
+                        }
                         let row = PgRow {
                             data,
                             format,
@@ -389,6 +406,27 @@ impl PgConnection {
                     BackendMessageFormat::ReadyForQuery => {
                         // processing of the query string is complete
                         self.handle_ready_for_query(message)?;
+                        if defer_metadata {
+                            let mut columns = metadata.columns.clone();
+                            self.resolve_result_columns(&mut columns).await?;
+                            metadata = Arc::new(PgStatementMetadata {
+                                columns,
+                                column_names: Arc::clone(&metadata.column_names),
+                                parameters: Vec::default(),
+                            });
+                            // Move the original row storage, preserving result
+                            // order and never executing the statement again.
+                            for result in deferred {
+                                match result {
+                                    Either::Left(result) => r#yield!(Either::Left(result)),
+                                    Either::Right(data) => r#yield!(Either::Right(PgRow {
+                                        data,
+                                        format,
+                                        metadata: Arc::clone(&metadata),
+                                    })),
+                                }
+                            }
+                        }
                         break;
                     }
 
