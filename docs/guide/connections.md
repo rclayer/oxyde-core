@@ -196,6 +196,22 @@ settings = PoolSettings(
 )
 ```
 
+Set `pg_statement_cache_capacity=0` to execute ordinary parameterized queries
+with unnamed statements. Parse, Bind, Describe portal, Execute, and Close are
+sent in a single batch ending in one Sync. Queries use the current result shape
+after schema changes without accumulating named statements in PostgreSQL or
+PgBouncer. The single batch also supports PgBouncer transaction pooling.
+Explicitly prepared statement objects retain their existing preparation path.
+
+Built-in results and custom types already known to the connection stream normally.
+On the first binary result containing an unknown custom type, the driver buffers
+that result until its execution reaches ReadyForQuery, then resolves the type and
+its array elements or composite fields on the same connection before exposing
+rows. This cold path adds catalog round trips, delays the first row, and uses
+memory proportional to that result. Later reads reuse the connection's type
+cache. Metadata loading never replays the original query or mutation; a metadata
+failure after an autocommit mutation can occur after the write has committed.
+
 ### MySQL Settings
 
 ```python

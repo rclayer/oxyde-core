@@ -57,7 +57,10 @@ repos:
     rev: v6.0.0
     hooks:
       - id: trailing-whitespace
+        # Preserve the published crate so the driver patch remains reviewable.
+        exclude: ^vendor/sqlx-postgres/
       - id: end-of-file-fixer
+        exclude: ^vendor/sqlx-postgres/
       - id: check-yaml
         exclude: mkdocs\.yml$
       - id: check-toml
@@ -65,3 +68,5 @@ repos:
         args: ["--maxkb=500"]
       - id: check-merge-conflict
       - id: detect-private-key
+        # The upstream SSL example contains only a PEM marker and placeholder.
+        exclude: ^vendor/sqlx-postgres/src/options/mod\.rs$

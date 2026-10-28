@@ -972,7 +972,7 @@ checksum = "9f7c3e4beb33f85d45ae3e3a1792185706c8e16d043238c593331cc7cd313b50"
 
 [[package]]
 name = "oxyde-codec"
-version = "0.7.3"
+version = "0.7.4"
 dependencies = [
  "anyhow",
  "rmp-serde",
@@ -984,7 +984,7 @@ dependencies = [
 
 [[package]]
 name = "oxyde-core-py"
-version = "0.7.3"
+version = "0.7.4"
 dependencies = [
  "anyhow",
  "futures",
@@ -1006,7 +1006,7 @@ dependencies = [
 
 [[package]]
 name = "oxyde-driver"
-version = "0.7.3"
+version = "0.7.4"
 dependencies = [
  "anyhow",
  "async-trait",
@@ -1031,14 +1031,14 @@ dependencies = [
 
 [[package]]
 name = "oxyde-migrate"
-version = "0.7.3"
+version = "0.7.4"
 dependencies = [
  "oxyde-codec",
 ]
 
 [[package]]
 name = "oxyde-sql"
-version = "0.7.3"
+version = "0.7.4"
 dependencies = [
  "anyhow",
  "chrono",
@@ -1825,8 +1825,6 @@ dependencies = [
 [[package]]
 name = "sqlx-postgres"
 version = "0.8.6"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "db58fcd5a53cf07c184b154801ff91347e4c30d17a3562a635ff028ad5deda46"
 dependencies = [
  "atoi",
  "base64",
